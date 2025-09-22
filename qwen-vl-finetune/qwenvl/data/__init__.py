@@ -1,6 +1,19 @@
 import re
 
 # Define placeholders for dataset paths
+# Custom datasets
+
+CAMBRIAN_737K_COCO_SUBSET = {
+    "annotation_path": "/home/ray/default/multiscale-foundation-models/data/Cambrian-737k-coco/Cambrian737k-coco.json",
+    "data_path": "/home/ray/default/multiscale-foundation-models/data/Cambrian-737k-coco/",
+}
+
+CAMBRIAN_737K_COCO_DEV = {
+    "annotation_path": "/home/ray/default/multiscale-foundation-models/data/Cambrian-737k-coco-dev/Cambrian737k-coco.json",
+    "data_path": "/home/ray/default/multiscale-foundation-models/Cambrian-737k-coco-dev/",
+}
+
+# Define placeholders for dataset paths
 CAMBRIAN_737K = {
     "annotation_path": "PATH_TO_CAMBRIAN_737K_ANNOTATION",
     "data_path": "",
@@ -32,6 +45,9 @@ data_dict = {
     "mp_doc": MP_DOC,
     "clevr_mc": CLEVR_MC,
     "videochatgpt": VIDEOCHATGPT,
+    # Added
+    "cambrian_737k_coco": CAMBRIAN_737K_COCO_SUBSET,
+    "cambrian_737k_coco_dev": CAMBRIAN_737K_COCO_DEV,
 }
 
 
