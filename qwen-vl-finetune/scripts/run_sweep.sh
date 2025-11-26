@@ -51,10 +51,10 @@ output_dir_base=/mnt/local_storage/qwen-vl-finetune/checkpoints/
 # Format: "name:max_pixels:min_pixels:model_max_length:skip_flag"
 # skip_flag: 0=run, 1=skip
 CONFIGS=(
-    # "1k_tokens:200704:200704:8192:0"
+    "1k_tokens:200704:200704:8192:0"
     "4k_tokens:802816:802816:8192:0"
-    # "8k_tokens:1806336:1806336:8192:0"
-    # "16k_tokens:3211264:3211264:8192:0" # OOM for 32B
+    "8k_tokens:1806336:1806336:8192:0"
+    "16k_tokens:3211264:3211264:8192:0" # OOM for 32B
     # "32k_tokens:5017600:5017600:16384:0" # Skip for 32B (OOM)
     # "64k_tokens:12845056:12845056:32768:0" # Skip for 32B (OOM)
 )

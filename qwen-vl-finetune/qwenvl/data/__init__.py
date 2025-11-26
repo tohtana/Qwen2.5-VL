@@ -1,6 +1,8 @@
+import os
 import re
 
 # Define placeholders for dataset paths
+MSCOCO_DATA_PATH = os.environ.get("MSCOCO_DATA_PATH", "/home/ray/mscoco2017")
 CAMBRIAN_737K = {
     "annotation_path": "PATH_TO_CAMBRIAN_737K_ANNOTATION",
     "data_path": "",
@@ -34,12 +36,12 @@ data_dict = {
     "videochatgpt": VIDEOCHATGPT,
     # MS COCO 2017 captions datasets
     "mscoco2017_train_captions": {
-        "annotation_path": "/home/ray/mscoco2017/annotations/coco2017_train_qwen.json",
-        "data_path": "/home/ray/mscoco2017",
+        "annotation_path": f"{MSCOCO_DATA_PATH}/annotations/coco2017_train_qwen.json",
+        "data_path": MSCOCO_DATA_PATH,
     },
     "mscoco2017_val_captions": {
-        "annotation_path": "/home/ray/mscoco2017/annotations/coco2017_val_qwen.json",
-        "data_path": "/home/ray/mscoco2017",
+        "annotation_path": f"{MSCOCO_DATA_PATH}/annotations/coco2017_val_qwen.json",
+        "data_path": MSCOCO_DATA_PATH,
     },
 }
 
