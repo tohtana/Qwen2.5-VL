@@ -298,6 +298,18 @@ def train_loop(config: Dict[str, Any]) -> None:
     Args:
         config: Dictionary containing all training configuration.
     """
+    # Add project root to path for imports (must be done in each worker)
+    # This is necessary because Ray workers don't inherit sys.path from the driver
+    import sys
+    from pathlib import Path
+    project_root = Path(__file__).resolve().parent.parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    # Also add to handle Anyscale job packaging (working_dir is at qwen-vl-finetune level)
+    finetune_root = project_root / "qwen-vl-finetune"
+    if finetune_root.exists() and str(finetune_root) not in sys.path:
+        sys.path.insert(0, str(finetune_root))
+
     # Replace attention class for data flattening support
     from qwenvl.train.trainer import replace_qwen2_vl_attention_class
 
