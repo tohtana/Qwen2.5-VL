@@ -582,10 +582,7 @@ def main():
 
     # Initialize Ray if not already connected to a cluster
     if not ray.is_initialized():
-        # For local runs, include qwenvl in runtime_env
-        finetune_dir = Path(__file__).resolve().parent.parent.parent
-        runtime_env = {"py_modules": [str(finetune_dir)]}
-        ray.init(runtime_env=runtime_env)
+        ray.init()
 
     # Build training config
     train_loop_config = {
