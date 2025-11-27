@@ -637,12 +637,18 @@ def main():
         name=experiment_name,
     )
 
+    # Runtime env to ensure workers can import qwenvl
+    # Get the qwen-vl-finetune directory (where this script lives)
+    finetune_dir = Path(__file__).resolve().parent.parent.parent
+    runtime_env = {"py_modules": [str(finetune_dir)]}
+
     # Create trainer
     trainer = TorchTrainer(
         train_loop_per_worker=train_loop,
         train_loop_config=train_loop_config,
         scaling_config=scaling_config,
         run_config=run_config,
+        runtime_env=runtime_env,
     )
 
     print(f"Starting Ray Train with {args.num_workers} workers...")
