@@ -482,16 +482,16 @@ def train_loop(config: Dict[str, Any]) -> None:
         print(f"Training completed! {max_steps} total steps, "
               f"{len(iteration_times)} measured steps (avg {avg_time:.3f}s/step)")
 
-    report_metrics_and_save_checkpoint(
-        ds_engine,
-        {
-            "loss": avg_loss,
-            "step": global_step,
-            "avg_iter_time": avg_time if iteration_times else 0,
-            "steps_per_sec": steps_per_sec if iteration_times else 0,
-        },
-        config,
-    )
+    # report_metrics_and_save_checkpoint(
+    #     ds_engine,
+    #     {
+    #         "loss": avg_loss,
+    #         "step": global_step,
+    #         "avg_iter_time": avg_time if iteration_times else 0,
+    #         "steps_per_sec": steps_per_sec if iteration_times else 0,
+    #     },
+    #     config,
+    # )
 
 
 def main():
@@ -580,9 +580,12 @@ def main():
 
     print(f"Arguments: {args}")
 
-    # Initialize Ray
+    # Initialize Ray if not already connected to a cluster
     if not ray.is_initialized():
-        ray.init()
+        # For local runs, include qwenvl in runtime_env
+        finetune_dir = Path(__file__).resolve().parent.parent.parent
+        runtime_env = {"py_modules": [str(finetune_dir)]}
+        ray.init(runtime_env=runtime_env)
 
     # Build training config
     train_loop_config = {
@@ -637,18 +640,12 @@ def main():
         name=experiment_name,
     )
 
-    # Runtime env to ensure workers can import qwenvl
-    # Get the qwen-vl-finetune directory (where this script lives)
-    finetune_dir = Path(__file__).resolve().parent.parent.parent
-    runtime_env = {"py_modules": [str(finetune_dir)]}
-
     # Create trainer
     trainer = TorchTrainer(
         train_loop_per_worker=train_loop,
         train_loop_config=train_loop_config,
         scaling_config=scaling_config,
         run_config=run_config,
-        runtime_env=runtime_env,
     )
 
     print(f"Starting Ray Train with {args.num_workers} workers...")
