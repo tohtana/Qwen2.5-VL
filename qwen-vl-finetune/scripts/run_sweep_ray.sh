@@ -40,8 +40,9 @@ DATASET_USE=${DATASET_USE:-"mscoco2017_val_captions"}
 # Output configuration base
 OUTPUT_DIR_BASE=${OUTPUT_DIR_BASE:-"/mnt/local_storage/qwen-vl-finetune/checkpoints/"}
 
-# DeepSpeed ZeRO stage
-ZERO_STAGE=${ZERO_STAGE:-3}
+# DeepSpeed configuration (use absolute path for Ray workers)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEEPSPEED_CONFIG=${DEEPSPEED_CONFIG:-"${SCRIPT_DIR}/zero3.json"}
 
 # Define all configurations to sweep through
 # Format: "name:max_pixels:min_pixels:model_max_length:skip_flag"
@@ -119,31 +120,34 @@ for config in "${CONFIGS[@]}"; do
         --num_workers ${NUM_WORKERS} \
         --storage_path ${STORAGE_PATH} \
         --experiment_name ${RUN_NAME} \
+        --deepspeed ${DEEPSPEED_CONFIG} \
         --model_name_or_path ${MODEL_NAME} \
         --dataset_use ${DATASET_USE} \
-        --data_flatten true \
-        --tune_mm_vision true \
-        --tune_mm_mlp true \
-        --tune_mm_llm true \
-        --bf16 true \
+        --data_flatten True \
+        --tune_mm_vision True \
+        --tune_mm_mlp True \
+        --tune_mm_llm True \
+        --bf16 \
         --output_dir ${OUTPUT_DIR} \
         --max_steps ${MAX_STEPS} \
         --per_device_train_batch_size ${BATCH_SIZE} \
+        --per_device_eval_batch_size $((BATCH_SIZE*2)) \
         --gradient_accumulation_steps ${GRAD_ACCUM_STEPS} \
         --max_pixels ${max_pixels} \
         --min_pixels ${min_pixels} \
-        --force_fixed_size true \
+        --force_fixed_size True \
         --model_max_length ${model_max_length} \
+        --eval_strategy no \
+        --save_strategy no \
         --learning_rate ${LEARNING_RATE} \
         --weight_decay 0 \
         --warmup_steps ${WARMUP_STEPS} \
         --max_grad_norm 1 \
+        --lr_scheduler_type cosine \
         --logging_steps 1 \
-        --gradient_checkpointing true \
+        --gradient_checkpointing True \
         --dataloader_num_workers 4 \
         --run_name ${RUN_NAME} \
-        --zero_stage ${ZERO_STAGE} \
-        --save_strategy no \
         --report_to none >> ${log_file} 2>&1
 
     exit_code=$?
@@ -152,30 +156,20 @@ for config in "${CONFIGS[@]}"; do
     # Extract accurate iteration timing from the training script output
     avg_iter_time="N/A"
     train_steps_per_sec="N/A"
+    min_iter_time="N/A"
+    max_iter_time="N/A"
 
-    # Look for the timing statistics
-    if grep -q "Training completed!" ${log_file}; then
-        # Extract average iteration time from "(avg X.XXXs/step)"
-        avg_iter_time=$(grep "Training completed!" ${log_file} | tail -1 | grep -oP 'avg \K[0-9]+\.[0-9]+(?=s/step)' || true)
-        if [ -z "$avg_iter_time" ]; then
-            echo "WARNING: Could not extract average iteration time from log"
-            exit_code=1
-        fi
+    # Look for the accurate timing statistics printed by QwenVLTrainer
+    if grep -q "ACCURATE ITERATION TIMING STATISTICS" ${log_file}; then
+        # Extract average iteration time (excluding warmup)
+        avg_iter_time=$(grep "Average iteration time (excluding warmup):" ${log_file} | tail -1 | grep -oP '\K[0-9.]+(?= seconds)')
 
-        # Extract number of measured steps from "X measured steps"
-        num_measured_iters=$(grep "Training completed!" ${log_file} | tail -1 | grep -oP '[0-9]+ (?=measured steps)' || true)
-        if [ -z "$num_measured_iters" ]; then
-            echo "WARNING: Could not extract number of measured steps from log"
-            exit_code=1
-        fi
+        # Extract steps per second
+        train_steps_per_sec=$(grep "Steps per second:" ${log_file} | tail -1 | grep -oP '\K[0-9.]+$')
 
-        # Calculate steps per second
-        if [ "$avg_iter_time" != "N/A" ] && [ "$avg_iter_time" != "0" ] && [ "$avg_iter_time" != "" ]; then
-            train_steps_per_sec=$(awk "BEGIN {printf \"%.4f\", 1.0 / $avg_iter_time}")
-        fi
-    else
-        echo "WARNING: 'Training completed!' message not found in log"
-        exit_code=1
+        # Extract min and max times
+        min_iter_time=$(grep "Min iteration time:" ${log_file} | tail -1 | grep -oP '\K[0-9.]+(?= seconds)')
+        max_iter_time=$(grep "Max iteration time:" ${log_file} | tail -1 | grep -oP '\K[0-9.]+(?= seconds)')
     fi
 
     # Record completion time and status
@@ -186,6 +180,8 @@ for config in "${CONFIGS[@]}"; do
     echo "Extracted Timing Metrics:" >> ${log_file}
     echo "  Average iteration time: ${avg_iter_time}s" >> ${log_file}
     echo "  Steps per second: ${train_steps_per_sec}" >> ${log_file}
+    echo "  Min iteration time: ${min_iter_time}s" >> ${log_file}
+    echo "  Max iteration time: ${max_iter_time}s" >> ${log_file}
 
     # Check if training was successful
     if [ $exit_code -eq 0 ]; then
@@ -257,7 +253,7 @@ echo "  Model: ${MODEL_NAME}" >> ${summary_file}
 echo "  Num Workers: ${NUM_WORKERS}" >> ${summary_file}
 echo "  Max Steps: ${MAX_STEPS}" >> ${summary_file}
 echo "  Batch Size: ${BATCH_SIZE}" >> ${summary_file}
-echo "  ZeRO Stage: ${ZERO_STAGE}" >> ${summary_file}
+echo "  DeepSpeed Config: ${DEEPSPEED_CONFIG}" >> ${summary_file}
 echo "" >> ${summary_file}
 echo "Total configurations: ${#CONFIGS[@]}" >> ${summary_file}
 echo "Executed: ${TOTAL_RUNS}" >> ${summary_file}
