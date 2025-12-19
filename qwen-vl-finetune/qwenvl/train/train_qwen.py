@@ -49,7 +49,7 @@ from qwenvl.train.argument import (
     DataArguments,
     TrainingArguments,
 )
-from transformers import AutoProcessor, Trainer
+from transformers import AutoProcessor, Trainer, TrainerCallback
 
 local_rank = None
 
@@ -155,6 +155,25 @@ class QwenVLTrainer(Trainer):
         rank0_print("="*60 + "\n")
 
 
+class DebugStepsCallback(TrainerCallback):
+    """Stop training once a target number of steps is reached."""
+
+    def __init__(self):
+        self.triggered = False
+
+    def on_step_end(self, args, state, control, **kwargs):
+        target_steps = getattr(args, "debug_steps", None)
+        if target_steps is None:
+            return control
+
+        if state.global_step >= target_steps:
+            if not self.triggered:
+                rank0_print(f"Debug steps reached at global step {state.global_step}; stopping training.")
+                self.triggered = True
+            control.should_training_stop = True
+        return control
+
+
 def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
 
@@ -239,6 +258,15 @@ def train(attn_implementation="flash_attention_2"):
             attn_implementation=attn_implementation,
             dtype=(torch.bfloat16 if training_args.bf16 else None),
         )
+        # from transformers import Qwen2_5_VLConfig
+        # config = Qwen2_5_VLConfig.from_pretrained(
+        #     model_args.model_name_or_path,
+        #     cache_dir=training_args.cache_dir,
+        #     attn_implementation=attn_implementation,
+        # )
+        # model = Qwen2_5_VLForConditionalGeneration(config)
+        # if training_args.bf16:
+        #     model = model.to(torch.bfloat16)
         data_args.model_type = "qwen2.5vl"
     else:
         model = Qwen2VLForConditionalGeneration.from_pretrained(
@@ -288,6 +316,10 @@ def train(attn_implementation="flash_attention_2"):
         args=training_args, 
         **data_module
     )
+
+    if training_args.debug_steps is not None:
+        rank0_print(f"Debug mode active: training will stop after {training_args.debug_steps} steps.")
+        trainer.add_callback(DebugStepsCallback())
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         logging.info("checkpoint found, resume training")

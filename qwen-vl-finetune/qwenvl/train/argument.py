@@ -38,3 +38,7 @@ class TrainingArguments(transformers.TrainingArguments):
     )
     mm_projector_lr: Optional[float] = None
     vision_tower_lr: Optional[float] = None
+    debug_steps: Optional[int] = field(
+        default=None,
+        metadata={"help": "Optional limit on the number of training steps for debugging."},
+    )

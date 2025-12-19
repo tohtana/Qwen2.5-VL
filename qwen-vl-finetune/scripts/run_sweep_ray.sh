@@ -32,6 +32,7 @@ LEARNING_RATE=${LEARNING_RATE:-2e-7}
 BATCH_SIZE=${BATCH_SIZE:-1}
 GRAD_ACCUM_STEPS=${GRAD_ACCUM_STEPS:-1}
 MAX_STEPS=${MAX_STEPS:-100}  # Number of training steps per configuration
+DEBUG_STEPS=${DEBUG_STEPS:-10}
 WARMUP_STEPS=${WARMUP_STEPS:-3}  # Number of warmup steps
 
 # Dataset configuration
@@ -130,6 +131,7 @@ for config in "${CONFIGS[@]}"; do
         --bf16 \
         --output_dir ${OUTPUT_DIR} \
         --max_steps ${MAX_STEPS} \
+        --debug_steps ${DEBUG_STEPS} \
         --per_device_train_batch_size ${BATCH_SIZE} \
         --per_device_eval_batch_size $((BATCH_SIZE*2)) \
         --gradient_accumulation_steps ${GRAD_ACCUM_STEPS} \

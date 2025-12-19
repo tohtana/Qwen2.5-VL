@@ -36,6 +36,7 @@ lr=2e-7
 batch_size=1
 grad_accum_steps=1
 max_steps=100  # Number of training steps to run for each configuration
+debug_steps=10
 warmup_steps=3  # Number of warmup steps
 
 # Training entry point
@@ -118,6 +119,7 @@ for config in "${CONFIGS[@]}"; do
         --bf16 \
         --output_dir ${output_dir} \
         --max_steps ${max_steps} \
+        --debug_steps ${debug_steps} \
         --per_device_train_batch_size ${batch_size} \
         --per_device_eval_batch_size $((batch_size*2)) \
         --gradient_accumulation_steps ${grad_accum_steps} \
