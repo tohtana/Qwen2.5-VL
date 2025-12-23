@@ -326,12 +326,15 @@ def train(attn_implementation="flash_attention_2"):
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
-    trainer.save_state()
-    processor.save_pretrained(training_args.output_dir)
-
     model.config.use_cache = True
 
-    safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
+    # Skip saving if save_strategy is "no" (e.g., for benchmarking)
+    if training_args.save_strategy != "no":
+        trainer.save_state()
+        processor.save_pretrained(training_args.output_dir)
+        safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
+    else:
+        rank0_print("Skipping model save (save_strategy='no')")
 
 
 if __name__ == "__main__":

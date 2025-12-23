@@ -81,6 +81,17 @@ def train_loop(config):
         sys.argv = original_argv
 
 
+def prepare_efa_environment():
+    """Set EFA environment variables for multi-node NCCL communication."""
+    return {
+        "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6",
+        "NCCL_NET_PLUGIN": "ofi",
+        "LD_LIBRARY_PATH": "/opt/aws-ofi-nccl/lib:/opt/amazon/efa/lib:/opt/amazon/openmpi/lib:/opt/nccl/build/lib:/usr/local/cuda/lib64",
+        "FI_EFA_USE_DEVICE_RDMA": "1",
+        "NCCL_DEBUG": "INFO",
+    }
+
+
 def main():
     """Main entry point for Ray Train Qwen2.5-VL training."""
     parser = argparse.ArgumentParser(description="Ray Train wrapper for Qwen2.5-VL")
@@ -88,7 +99,7 @@ def main():
     # Ray Train specific arguments
     parser.add_argument("--num_workers", type=int, default=8,
                         help="Number of Ray workers (typically one per GPU)")
-    parser.add_argument("--storage_path", type=str, default="/mnt/cluster_storage",
+    parser.add_argument("--storage_path", type=str, default="/tmp/cluster_storage",
                         help="Storage path for checkpoints")
     parser.add_argument("--experiment_name", type=str, default=None,
                         help="Name for the training experiment")
@@ -158,9 +169,13 @@ def main():
             train_loop_config["deepspeed"] = str(default_ds_config)
             print(f"Using default DeepSpeed config: {default_ds_config}")
 
-    # Initialize Ray if not already connected
+    # Initialize Ray with EFA environment variables for multi-node NCCL
+    efa_env = prepare_efa_environment()
     if not ray.is_initialized():
-        ray.init()
+        print("Initializing Ray with EFA environment variables:")
+        for k, v in efa_env.items():
+            print(f"  {k}={v}")
+        ray.init(runtime_env={"env_vars": efa_env})
 
     # Scaling config
     scaling_config = ScalingConfig(
